@@ -2,6 +2,11 @@
 	zephyr,user {
 		io-channels = <&adc1 0>;
 	};
+
+    aliases {
+		i2s-codec-tx = &sai1;
+		i2s-codec-rx = &sai1;
+	};
 };
 
 // nxp_rt1060
@@ -13,6 +18,19 @@
 		group0 {
 			pinmux = <&iomuxc_gpio_ad_b1_11_adc1_in0>;
 			bias-disable;
+			drive-strength = "r0-6";
+			slew-rate = "slow";
+			nxp,speed = "100-mhz";
+		};
+	};
+
+	pinmux_sai1: pinmux_sai1 {
+		group0 {
+			pinmux = <&iomuxc_gpio_ad_b1_09_sai1_mclk>,  // teensy 23
+				 <&iomuxc_gpio_b1_01_sai1_tx_data0>, // teensy 7
+				 <&iomuxc_gpio_b1_00_sai1_rx_data0>, // teensy 8
+				 <&iomuxc_gpio_ad_b1_11_sai1_rx_bclk>, // teensy 21
+				 <&iomuxc_gpio_ad_b1_10_sai1_rx_sync>; // teensy 20 (LRCLK)
 			drive-strength = "r0-6";
 			slew-rate = "slow";
 			nxp,speed = "100-mhz";
@@ -34,4 +52,11 @@
 		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
 		zephyr,resolution = <12>;
 	};
+};
+
+// Found in mimxrt1060_evk-pinctrl.dtsi
+&sai1 {
+	status = "okay";
+	pinctrl-0 = <&pinmux_sai1>;
+	pinctrl-names = "default";
 };

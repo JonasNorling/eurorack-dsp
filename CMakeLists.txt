@@ -12,4 +12,7 @@ set(BOARD teensy41)
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(eurorack-dsp)
 
-target_sources(app PRIVATE src/main.c)
+target_sources(app PRIVATE
+  src/main.c
+  src/audio.c
+)

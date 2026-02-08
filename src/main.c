@@ -5,6 +5,8 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(main);
 
+#include "audio.h"
+
 #define CHECK(x) if (!(x)) { printf("FAILED AT LINE %s:%d\n", __FILE__, __LINE__); return 1; }
 
 /* From adc_dt demo */
@@ -57,6 +59,8 @@ int main(void)
 			return 0;
 		}
 	}
+
+	CHECK(audio_init() == 0);
 
 	while (1) {
 		(void)gpio_pin_toggle_dt(&led);
