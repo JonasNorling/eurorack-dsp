@@ -1,0 +1,13 @@
+# Setup file for West, Zephyr RTOS's management tool.
+# We usa a "T2" topology, i.e. this repo is the manifest repo pulling in Zephyr
+manifest:
+  remotes:
+    - name: zephyrproject-rtos
+      url-base: https://github.com/zephyrproject-rtos
+  projects:
+    - name: zephyr
+      remote: zephyrproject-rtos
+      revision: v4.3.0
+      import: true
+  self:
+    path: eurorack-dsp
