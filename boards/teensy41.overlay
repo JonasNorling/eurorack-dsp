@@ -1,0 +1,37 @@
+/ {
+	zephyr,user {
+		io-channels = <&adc1 0>;
+	};
+};
+
+// nxp_rt1060
+
+// Found in mimxrt1060_evk-pinctrl.dtsi
+&pinctrl {
+	/* ADC1 IN0 on teensy pin 21 "A7" = AD_B1_11 */
+	pinmux_adc1: pinmux_adc1 {
+		group0 {
+			pinmux = <&iomuxc_gpio_ad_b1_11_adc1_in0>;
+			bias-disable;
+			drive-strength = "r0-6";
+			slew-rate = "slow";
+			nxp,speed = "100-mhz";
+		};
+	};
+};
+
+&adc1 {
+	status = "okay";
+	pinctrl-0 = <&pinmux_adc1>;
+	pinctrl-names = "default";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	channel@0 {
+		reg = <0>;
+		zephyr,gain = "ADC_GAIN_1";
+		zephyr,reference = "ADC_REF_INTERNAL";
+		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+		zephyr,resolution = <12>;
+	};
+};

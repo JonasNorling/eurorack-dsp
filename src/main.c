@@ -1,48 +1,70 @@
-/*
- * Copyright (c) 2016 Intel Corporation
- *
- * SPDX-License-Identifier: Apache-2.0
- */
-
 #include <stdio.h>
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/gpio.h>
+#include <zephyr/drivers/adc.h>
+#include <zephyr/logging/log.h>
+LOG_MODULE_REGISTER(main);
 
-/* 1000 msec = 1 sec */
-#define SLEEP_TIME_MS   1000
+#define CHECK(x) if (!(x)) { printf("FAILED AT LINE %s:%d\n", __FILE__, __LINE__); return 1; }
 
-/* The devicetree node identifier for the "led0" alias. */
-#define LED0_NODE DT_ALIAS(led0)
+/* From adc_dt demo */
+#if !DT_NODE_EXISTS(DT_PATH(zephyr_user)) || \
+	!DT_NODE_HAS_PROP(DT_PATH(zephyr_user), io_channels)
+#error "No suitable devicetree overlay specified"
+#endif
 
-/*
- * A build error on this line means your board is unsupported.
- * See the sample documentation for information on how to fix this.
- */
-static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
+#define DT_SPEC_AND_COMMA(node_id, prop, idx) \
+	ADC_DT_SPEC_GET_BY_IDX(node_id, idx),
+
+/* Data of ADC io-channels specified in devicetree. */
+static const struct adc_dt_spec adc_channels[] = {
+	DT_FOREACH_PROP_ELEM(DT_PATH(zephyr_user), io_channels, DT_SPEC_AND_COMMA)
+};
+
+static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
 
 int main(void)
 {
-	int ret;
-	bool led_state = true;
+	// Wait for USB console to connect
+	k_msleep(2000);
+	LOG_INF("Hello there!\n");
 
-	if (!gpio_is_ready_dt(&led)) {
-		return 0;
-	}
+	CHECK(gpio_is_ready_dt(&led));
+	CHECK(gpio_pin_configure_dt(&led, GPIO_OUTPUT_ACTIVE) == 0);
 
-	ret = gpio_pin_configure_dt(&led, GPIO_OUTPUT_ACTIVE);
-	if (ret < 0) {
-		return 0;
-	}
+	uint16_t buf;
+	struct adc_sequence sequence = {
+		.buffer = &buf,
+		.buffer_size = sizeof(buf),
+	};
 
-	while (1) {
-		ret = gpio_pin_toggle_dt(&led);
-		if (ret < 0) {
+	/* Configure ADC channels */
+	for (size_t i = 0U; i < ARRAY_SIZE(adc_channels); i++) {
+		if (!adc_is_ready_dt(&adc_channels[i])) {
+			printk("ADC controller device %s not ready\n", adc_channels[i].dev->name);
 			return 0;
 		}
 
-		led_state = !led_state;
-		printf("LED state: %s\n", led_state ? "ON" : "OFF");
-		k_msleep(SLEEP_TIME_MS);
+		int err = adc_channel_setup_dt(&adc_channels[i]);
+		if (err < 0) {
+			printk("Could not setup channel #%d (%d)\n", i, err);
+			return 0;
+		}
+	}
+
+	while (1) {
+		(void)gpio_pin_toggle_dt(&led);
+
+		(void)adc_sequence_init_dt(&adc_channels[0], &sequence);
+		int err = adc_read_dt(&adc_channels[0], &sequence);
+		if (err < 0) {
+			printk("Could not read (%d)\n", err);
+		}
+		char bar[65] = "";
+		memset(bar, '=', 64 * buf / 0x1000);
+		printf("ADC value: %04x %s\n", (int)buf, bar);
+
+		k_msleep(100);
 	}
 	return 0;
 }
