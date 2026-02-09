@@ -13,10 +13,10 @@
 
 // Found in mimxrt1060_evk-pinctrl.dtsi
 &pinctrl {
-	/* ADC1 IN0 on teensy pin 21 "A7" = AD_B1_11 */
+	/* ADC1 IN7 on teensy pin 14 "A0" = AD_B1_02 */
 	pinmux_adc1: pinmux_adc1 {
 		group0 {
-			pinmux = <&iomuxc_gpio_ad_b1_11_adc1_in0>;
+			pinmux = <&iomuxc_gpio_ad_b1_02_adc1_in7>;
 			bias-disable;
 			drive-strength = "r0-6";
 			slew-rate = "slow";
@@ -59,4 +59,5 @@
 	status = "okay";
 	pinctrl-0 = <&pinmux_sai1>;
 	pinctrl-names = "default";
+	mclk-output;
 };
