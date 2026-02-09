@@ -16,10 +16,16 @@ static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
 
 int audio_init(void)
 {
-    const struct device *const i2s_dev_codec = DEVICE_DT_GET(DT_ALIAS(i2s_codec_tx));
+	const struct device *const i2s_dev_rx = DEVICE_DT_GET(DT_ALIAS(i2s_codec_rx));
+    const struct device *const i2s_dev_tx = DEVICE_DT_GET(DT_ALIAS(i2s_codec_tx));
     
-	if (!device_is_ready(i2s_dev_codec)) {
-		LOG_ERR("%s is not ready\n", i2s_dev_codec->name);
+	if (!device_is_ready(i2s_dev_rx)) {
+		LOG_ERR("%s is not ready\n", i2s_dev_rx->name);
+		return 1;
+	}
+
+	if (!device_is_ready(i2s_dev_tx)) {
+		LOG_ERR("%s is not ready\n", i2s_dev_tx->name);
 		return 1;
 	}
 
@@ -33,29 +39,49 @@ int audio_init(void)
 		.block_size = BLOCK_SIZE,
 		.timeout = 2000,
     };
-	int ret = i2s_configure(i2s_dev_codec, I2S_DIR_TX, &config);
+	int ret = i2s_configure(i2s_dev_rx, I2S_DIR_RX, &config);
 	if (ret < 0) {
-		LOG_ERR("Failed to configure codec stream: %d\n", ret);
+		LOG_ERR("Failed to configure rx stream: %d\n", ret);
+		return false;
+	}
+	ret = i2s_configure(i2s_dev_rx, I2S_DIR_TX, &config);
+	if (ret < 0) {
+		LOG_ERR("Failed to configure rx stream: %d\n", ret);
 		return false;
 	}
 
 	LOG_INF("Starting I2S streaming");
 	static uint16_t data[SAMPLES_PER_BLOCK];
-	ret = i2s_buf_write(i2s_dev_codec, data, BLOCK_SIZE);
+	ret = i2s_buf_write(i2s_dev_tx, data, BLOCK_SIZE);
 	if (ret < 0) {
 		LOG_ERR("Failed to write data: %d\n", ret);
 		return 1;
 	}
 
-	i2s_trigger(i2s_dev_codec, I2S_DIR_TX, I2S_TRIGGER_START);
+	ret = i2s_trigger(i2s_dev_rx, I2S_DIR_RX, I2S_TRIGGER_START);
+	if (ret < 0) {
+		LOG_ERR("Failed to start rx: %d\n", ret);
+		return 1;
+	}
+	ret = i2s_trigger(i2s_dev_tx, I2S_DIR_TX, I2S_TRIGGER_START);
+	if (ret < 0) {
+		LOG_ERR("Failed to start tx: %d\n", ret);
+		return 1;
+	}
 
 	while (1) {
 		for (int i = 0; i < SAMPLES_PER_BLOCK; i++) {
-			data[i] = 0x00aa;
+			data[i] = i;
 		}
-		ret = i2s_buf_write(i2s_dev_codec, data, BLOCK_SIZE);
+		ret = i2s_buf_write(i2s_dev_tx, data, BLOCK_SIZE);
 		if (ret < 0) {
 			LOG_ERR("Failed to write data: %d\n", ret);
+			break;
+		}
+		size_t len = 0;
+		ret = i2s_buf_read(i2s_dev_rx, data, &len);
+		if (ret < 0) {
+			LOG_ERR("Failed to read data: %d\n", ret);
 			break;
 		}
 		(void)gpio_pin_toggle_dt(&led);
