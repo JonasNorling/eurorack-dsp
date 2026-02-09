@@ -6,6 +6,17 @@
     aliases {
 		i2s-codec-tx = &sai1;
 		i2s-codec-rx = &sai1;
+		i2c-codec = &lpi2c1;
+		led2 = &led2;
+	};
+
+	leds {
+		compatible = "gpio-leds";
+
+		led2: led2 {
+			gpios = <&gpio1 12 GPIO_ACTIVE_LOW>; // teensy 24 AD_B0_12
+			label = "Other LED";
+		};
 	};
 };
 
@@ -60,4 +71,10 @@
 	pinctrl-0 = <&pinmux_sai1>;
 	pinctrl-names = "default";
 	mclk-output;
+};
+
+&lpi2c1 {
+	status = "okay";
+	//pinctrl-0 = <&pinmux_lpi2c1>;
+	//pinctrl-names = "default";
 };
