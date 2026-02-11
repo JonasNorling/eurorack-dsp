@@ -70,7 +70,11 @@
 	status = "okay";
 	pinctrl-0 = <&pinmux_sai1>;
 	pinctrl-names = "default";
+
 	mclk-output;
+	// We use receiver pins for outputting BCLK and LRCLK so the transmitter
+	// must be configured to sync to the receiver.
+	nxp,tx-sync-mode;
 };
 
 &lpi2c1 {

@@ -65,6 +65,7 @@ static int config_codec(void)
 		{ 0x0006, 0x0030 }, // CHIP_I2S_CTRL: 16 bit
 		{ 0x0022, 0x1818 }, // CHIP_ANA_HP_CTRL: volume low
 		{ 0x0024, 0x0026 }, // CHIP_ANA_CTRL: unmute headphones, line, adc
+		{ 0x0010, 0x3c3c }, // CHIP_DAC_VOL: DAC gain 0dB (default)
 		{ 0x000e, 0x0000 }, // CHIP_ADCDAC_CTRL: unmute DACs
 	};
 
@@ -80,6 +81,17 @@ static int config_codec(void)
 			LOG_ERR("Codec config failure on line %d", __LINE__);
 			return 1;
 		}
+	}
+
+	for (int i = 0; i < 0x40; i += 2) {
+		uint8_t value[2] = {};
+		uint8_t reg_addr[2] = {0, i};
+		ret = i2c_write_read(i2c_dev, I2C_ADDR, &reg_addr, 2, &value, 2);
+		if (ret != 0) {
+			LOG_ERR("Codec config failure on line %d", __LINE__);
+			return 1;
+		}
+		LOG_INF("Reg %02x = %02x%02x", i, value[0], value[1]);
 	}
 
 	return 0;
@@ -107,6 +119,9 @@ int audio_init(void)
 		return 1;
 	}
 
+	// Use the receiver bit clock and frame sync:
+	//   configure rx for async operation
+	//   configure tx for sync operation
 	static const struct i2s_config config = {
         .word_size = 16,
 		.channels = 2,
@@ -122,9 +137,9 @@ int audio_init(void)
 		LOG_ERR("Failed to configure rx stream: %d\n", ret);
 		return false;
 	}
-	ret = i2s_configure(i2s_dev_rx, I2S_DIR_TX, &config);
+	ret = i2s_configure(i2s_dev_tx, I2S_DIR_TX, &config);
 	if (ret < 0) {
-		LOG_ERR("Failed to configure rx stream: %d\n", ret);
+		LOG_ERR("Failed to configure tx stream: %d\n", ret);
 		return false;
 	}
 
@@ -151,8 +166,8 @@ int audio_init(void)
 	while (1) {
 		memset(data, 0, sizeof(data));
 		for (int i = 0; i < SAMPLES_PER_BLOCK; i += 2) {
-			data[i] = 1000 * sin(220 * 6.28 * sample_counter / SAMPLE_RATE);
-			data[i+1] = 1000 * sin(230 * 6.28 * sample_counter / SAMPLE_RATE);
+			data[i] = 0x7fff * sin(220 * 6.28 * sample_counter / SAMPLE_RATE);
+			data[i+1] = 0x7fff * sin(230 * 6.28 * sample_counter / SAMPLE_RATE);
 			sample_counter++;
 		}
 		ret = i2s_buf_write(i2s_dev_tx, data, BLOCK_SIZE);
