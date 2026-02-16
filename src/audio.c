@@ -1,22 +1,18 @@
 #include "audio.h"
-#include <math.h>
 #include <zephyr/kernel.h>
-#include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/i2s.h>
 #include <zephyr/drivers/i2c.h>
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(audio);
 
-
-#define BYTES_PER_SAMPLE 2
-#define SAMPLES_PER_BLOCK 1024
+#define BYTES_PER_SAMPLE sizeof(sample_t)
+#define SAMPLES_PER_BLOCK (FRAMES_PER_BLOCK * 2)
 #define BLOCK_SIZE  (BYTES_PER_SAMPLE * SAMPLES_PER_BLOCK)
-#define BLOCK_COUNT 16
-#define SAMPLE_RATE 48000
+#define BLOCK_COUNT 4
 K_MEM_SLAB_DEFINE_IN_SECT_STATIC(mem_slab, __nocache, BLOCK_SIZE, BLOCK_COUNT, 4);
 
-static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
-static const struct gpio_dt_spec led2 = GPIO_DT_SPEC_GET(DT_ALIAS(led2), gpios);
+static const struct device *const i2s_dev_rx = DEVICE_DT_GET(DT_ALIAS(i2s_codec_rx));
+static const struct device *const i2s_dev_tx = DEVICE_DT_GET(DT_ALIAS(i2s_codec_tx));
 
 #define I2C_ADDR 0x0a
 
@@ -99,8 +95,6 @@ static int config_codec(void)
 
 int audio_init(void)
 {
-	const struct device *const i2s_dev_rx = DEVICE_DT_GET(DT_ALIAS(i2s_codec_rx));
-    const struct device *const i2s_dev_tx = DEVICE_DT_GET(DT_ALIAS(i2s_codec_tx));
 	int ret;
     
 	ret = config_codec();
@@ -143,9 +137,22 @@ int audio_init(void)
 		return false;
 	}
 
+	return 0;
+}
+
+int audio_run(void(*dsp_fn)(const frame_t * const in, frame_t *const out))
+{
+	int ret;
+
 	LOG_INF("Starting I2S streaming");
-	static int16_t data[SAMPLES_PER_BLOCK];
-	ret = i2s_buf_write(i2s_dev_tx, data, BLOCK_SIZE);
+	static frame_t out_data[FRAMES_PER_BLOCK];
+	static frame_t in_data[FRAMES_PER_BLOCK];
+	ret = i2s_buf_write(i2s_dev_tx, out_data, sizeof(out_data));
+	if (ret < 0) {
+		LOG_ERR("Failed to write data: %d\n", ret);
+		return 1;
+	}
+	ret = i2s_buf_write(i2s_dev_tx, out_data, sizeof(out_data));
 	if (ret < 0) {
 		LOG_ERR("Failed to write data: %d\n", ret);
 		return 1;
@@ -162,27 +169,21 @@ int audio_init(void)
 		return 1;
 	}
 
-	unsigned sample_counter = 0;
 	while (1) {
-		memset(data, 0, sizeof(data));
-		for (int i = 0; i < SAMPLES_PER_BLOCK; i += 2) {
-			data[i] = 0x7fff * sin(220 * 6.28 * sample_counter / SAMPLE_RATE);
-			data[i+1] = 0x7fff * sin(230 * 6.28 * sample_counter / SAMPLE_RATE);
-			sample_counter++;
+		size_t len = 0;
+		ret = i2s_buf_read(i2s_dev_rx, in_data, &len);
+		if (ret < 0 || len != sizeof(in_data)) {
+			LOG_ERR("Failed to read data: %d\n", ret);
+			break;
 		}
-		ret = i2s_buf_write(i2s_dev_tx, data, BLOCK_SIZE);
+
+		dsp_fn(in_data, out_data);
+
+		ret = i2s_buf_write(i2s_dev_tx, out_data, sizeof(out_data));
 		if (ret < 0) {
 			LOG_ERR("Failed to write data: %d\n", ret);
 			break;
 		}
-		size_t len = 0;
-		ret = i2s_buf_read(i2s_dev_rx, data, &len);
-		if (ret < 0) {
-			LOG_ERR("Failed to read data: %d\n", ret);
-			break;
-		}
-		(void)gpio_pin_toggle_dt(&led);
-		(void)gpio_pin_toggle_dt(&led2);
 	}
 
     return 0;

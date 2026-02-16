@@ -6,6 +6,7 @@
 LOG_MODULE_REGISTER(main);
 
 #include "audio.h"
+#include "dsp.h"
 
 #define CHECK(x) if (!(x)) { printf("FAILED AT LINE %s:%d\n", __FILE__, __LINE__); return 1; }
 
@@ -25,6 +26,11 @@ static const struct adc_dt_spec adc_channels[] = {
 
 static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
 static const struct gpio_dt_spec led2 = GPIO_DT_SPEC_GET(DT_ALIAS(led2), gpios);
+
+static void audio_thread_entry(void *dsp_fn, void*, void*)
+{
+	audio_run(dsp_fn);
+}
 
 int main(void)
 {
@@ -66,6 +72,21 @@ int main(void)
 			return 0;
 		}
 	}
+
+	struct k_thread audio_thread;
+	static K_THREAD_STACK_DEFINE(audio_stack, 1024);
+	CHECK(k_thread_create(
+		&audio_thread,
+		audio_stack,
+		K_THREAD_STACK_SIZEOF(audio_stack),
+		audio_thread_entry,
+		dsp_do,
+		NULL,
+		NULL,
+		0,
+		0,
+		K_NO_WAIT
+	));
 
 	while (1) {
 		(void)gpio_pin_toggle_dt(&led);
