@@ -59,9 +59,9 @@ int main(void)
 
 	while (1) {
 		led_set(0, true);
-		k_msleep(10);
+		k_msleep((int)(analog_in_get(0) * 100));
 		led_set(0, false);
-		k_msleep(500);
+		k_msleep(200);
 	}
 	return 0;
 }

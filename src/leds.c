@@ -16,6 +16,7 @@ int leds_init(void)
     	CHECK(gpio_is_ready_dt(&leds[i]));
 	    CHECK(gpio_pin_configure_dt(&leds[i], GPIO_OUTPUT_ACTIVE) == 0);
     }
+    return 0;
 }
 
 void led_set(int n, bool value)

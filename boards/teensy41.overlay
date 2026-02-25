@@ -1,13 +1,10 @@
 / {
-	zephyr,user {
-		io-channels = <&adc1 0>;
-	};
-
     aliases {
 		i2s-codec-tx = &sai1;
 		i2s-codec-rx = &sai1;
 		i2c-codec = &lpi2c1;
 		led2 = &led2;
+		adc0 = &adc1;
 	};
 
 	leds {
@@ -24,10 +21,12 @@
 
 // Found in mimxrt1060_evk-pinctrl.dtsi
 &pinctrl {
-	/* ADC1 IN7 on teensy pin 14 "A0" = AD_B1_02 */
 	pinmux_adc1: pinmux_adc1 {
 		group0 {
-			pinmux = <&iomuxc_gpio_ad_b1_02_adc1_in7>;
+			/* ADC1 IN7 on Teensy pin 14 "A0" = AD_B1_02 */
+			/* ADC1 IN8 on Teensy pin 15 "A1" = AD_B1_03 */
+			pinmux = <&iomuxc_gpio_ad_b1_02_adc1_in7>,
+				<&iomuxc_gpio_ad_b1_03_adc1_in8>;
 			bias-disable;
 			drive-strength = "r0-6";
 			slew-rate = "slow";
@@ -56,8 +55,16 @@
 	#address-cells = <1>;
 	#size-cells = <0>;
 
-	channel@0 {
-		reg = <0>;
+	channel@7 {
+		reg = <7>;
+		zephyr,gain = "ADC_GAIN_1";
+		zephyr,reference = "ADC_REF_INTERNAL";
+		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+		zephyr,resolution = <12>;
+	};
+
+	channel@8 {
+		reg = <8>;
 		zephyr,gain = "ADC_GAIN_1";
 		zephyr,reference = "ADC_REF_INTERNAL";
 		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
