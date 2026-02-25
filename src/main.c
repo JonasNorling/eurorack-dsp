@@ -1,80 +1,36 @@
 #include <stdio.h>
 #include <zephyr/kernel.h>
-#include <zephyr/drivers/gpio.h>
-#include <zephyr/drivers/adc.h>
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(main);
 
+#include "analog_in.h"
 #include "audio.h"
 #include "dsp.h"
+#include "leds.h"
 
 #define CHECK(x) if (!(x)) { printf("FAILED AT LINE %s:%d\n", __FILE__, __LINE__); return 1; }
 
-/* From adc_dt demo */
-#if !DT_NODE_EXISTS(DT_PATH(zephyr_user)) || \
-	!DT_NODE_HAS_PROP(DT_PATH(zephyr_user), io_channels)
-#error "No suitable devicetree overlay specified"
-#endif
+static const int thread_prio_audio = 0;
+static const int thread_prio_analog_in = 1;
 
-#define DT_SPEC_AND_COMMA(node_id, prop, idx) \
-	ADC_DT_SPEC_GET_BY_IDX(node_id, idx),
+static struct k_thread audio_thread;
+static K_THREAD_STACK_DEFINE(audio_stack, 1024);
+static struct k_thread analog_in_thread;
+static K_THREAD_STACK_DEFINE(analog_in_stack, 1024);
 
-/* Data of ADC io-channels specified in devicetree. */
-static const struct adc_dt_spec adc_channels[] = {
-	DT_FOREACH_PROP_ELEM(DT_PATH(zephyr_user), io_channels, DT_SPEC_AND_COMMA)
-};
-
-static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
-static const struct gpio_dt_spec led2 = GPIO_DT_SPEC_GET(DT_ALIAS(led2), gpios);
-
-static void audio_thread_entry(void *dsp_fn, void*, void*)
-{
-	audio_run(dsp_fn);
-}
+static void audio_thread_entry(void *dsp_fn, void*, void*) { audio_run(dsp_fn); }
+static void analog_in_thread_entry(void*, void*, void*) { analog_in_run(); }
 
 int main(void)
 {
-	CHECK(gpio_is_ready_dt(&led));
-	CHECK(gpio_pin_configure_dt(&led, GPIO_OUTPUT_ACTIVE) == 0);
-	CHECK(gpio_pin_configure_dt(&led2, GPIO_OUTPUT_ACTIVE) == 0);
-
-	// teensy pin 20 = AD_B1_10 = gpio 1.26
-	//CHECK(gpio_pin_configure(DEVICE_DT_GET(DT_NODELABEL(gpio1)), 26, GPIO_OUTPUT_ACTIVE) == 0);
-	// teensy pin 22 = AD_B1_08 = gpio 1.24
-	//CHECK(gpio_pin_configure(DEVICE_DT_GET(DT_NODELABEL(gpio1)), 24, GPIO_OUTPUT_ACTIVE) == 0);
-	// teensy pin 23 = AD_B1_09 = gpio 1.25 = SAI1 MCLK1
-	//CHECK(gpio_pin_configure(DEVICE_DT_GET(DT_NODELABEL(gpio1)), 25, GPIO_OUTPUT_ACTIVE) == 0);
-	// teensy pin 24 = AD_B0_12 = gpio 1.12
-	//CHECK(gpio_pin_configure(DEVICE_DT_GET(DT_NODELABEL(gpio1)), 12, GPIO_OUTPUT_INACTIVE) == 0);
-
 	// Wait for USB console to connect
 	k_msleep(4000);
 	LOG_INF("Hello there!\n");
 
-	uint16_t buf;
-	struct adc_sequence sequence = {
-		.buffer = &buf,
-		.buffer_size = sizeof(buf),
-	};
-
+	CHECK(leds_init() == 0);
+	CHECK(analog_in_init() == 0);
 	CHECK(audio_init() == 0);
 
-	/* Configure ADC channels */
-	for (size_t i = 0U; i < ARRAY_SIZE(adc_channels); i++) {
-		if (!adc_is_ready_dt(&adc_channels[i])) {
-			printk("ADC controller device %s not ready\n", adc_channels[i].dev->name);
-			return 0;
-		}
-
-		int err = adc_channel_setup_dt(&adc_channels[i]);
-		if (err < 0) {
-			printk("Could not setup channel #%d (%d)\n", i, err);
-			return 0;
-		}
-	}
-
-	struct k_thread audio_thread;
-	static K_THREAD_STACK_DEFINE(audio_stack, 1024);
 	CHECK(k_thread_create(
 		&audio_thread,
 		audio_stack,
@@ -83,24 +39,29 @@ int main(void)
 		dsp_do,
 		NULL,
 		NULL,
+		thread_prio_audio,
 		0,
+		K_NO_WAIT
+	));
+
+	CHECK(k_thread_create(
+		&analog_in_thread,
+		analog_in_stack,
+		K_THREAD_STACK_SIZEOF(analog_in_stack),
+		analog_in_thread_entry,
+		dsp_do,
+		NULL,
+		NULL,
+		thread_prio_analog_in,
 		0,
 		K_NO_WAIT
 	));
 
 	while (1) {
-		(void)gpio_pin_toggle_dt(&led);
-
-		(void)adc_sequence_init_dt(&adc_channels[0], &sequence);
-		int err = adc_read_dt(&adc_channels[0], &sequence);
-		if (err < 0) {
-			printk("Could not read (%d)\n", err);
-		}
-		char bar[65] = "";
-		memset(bar, '=', 64 * buf / 0x1000);
-		printf("ADC value: %04x %s\n", (int)buf, bar);
-
-		k_msleep(100);
+		led_set(0, true);
+		k_msleep(10);
+		led_set(0, false);
+		k_msleep(500);
 	}
 	return 0;
 }

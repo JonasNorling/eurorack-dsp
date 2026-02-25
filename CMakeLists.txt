@@ -14,6 +14,8 @@ project(eurorack-dsp)
 
 target_sources(app PRIVATE
   src/main.c
+  src/analog_in.c
   src/audio.c
   src/dsp.c
+  src/leds.c
 )
