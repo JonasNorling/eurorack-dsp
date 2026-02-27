@@ -8,7 +8,8 @@
  */
 #define HZ2OMEGA(f) ((f) * (3.1415926f / NYQUIST))
 
-#define CLAMP(v, min, max) (v) > (max) ? (max) : ((v) < (min) ? (min) : (v))
+// Use definition in zephyr/sys/util.h
+//#define CLAMP(v, min, max) (v) > (max) ? (max) : ((v) < (min) ? (min) : (v))
 #define RAMP(v, start, end) ((end) * (v) + (start * (1.0f-(v))))
 
 static inline int16_t saturate(int16_t v)

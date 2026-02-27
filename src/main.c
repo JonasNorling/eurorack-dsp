@@ -49,7 +49,7 @@ int main(void)
 		analog_in_stack,
 		K_THREAD_STACK_SIZEOF(analog_in_stack),
 		analog_in_thread_entry,
-		dsp_do,
+		NULL,
 		NULL,
 		NULL,
 		thread_prio_analog_in,

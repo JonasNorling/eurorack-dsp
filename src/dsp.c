@@ -1,9 +1,12 @@
 #include <stdint.h>
 #include <math.h>
+#include <zephyr/logging/log.h>
+LOG_MODULE_REGISTER(dsp);
 
 #include "dsp.h"
 #include "analog_in.h"
 #include "biquad.h"
+#include "perftimer.h"
 #include "utils.h"
 
 typedef float float_block_t[FRAMES_PER_BLOCK];
@@ -13,7 +16,7 @@ static inline float volume(float a)
 	return a*a;
 }
 
-void dsp_do(const frame_t * const restrict in, frame_t * const restrict out)
+static void _dsp_do(const frame_t * const restrict in, frame_t * const restrict out)
 {
 	static unsigned sample_counter = 0;
 	const float sin_volume = volume(analog_in_get(0));
@@ -46,5 +49,18 @@ void dsp_do(const frame_t * const restrict in, frame_t * const restrict out)
 	for (int i = 0; i < FRAMES_PER_BLOCK; i++) {
 		out[i].s[0] = saturate(buf[0][i]);
 		out[i].s[1] = saturate(buf[1][i]);
+	}
+}
+
+void dsp_do(const frame_t * const restrict in, frame_t * const restrict out)
+{
+	static perftimer_t pt;
+	perftimer_start(&pt);
+	_dsp_do(in, out);
+	perftimer_end(&pt);
+
+	if (pt.calls == 1000) {
+		perftimer_report("dsp", pt);
+		pt = (perftimer_t){};
 	}
 }
