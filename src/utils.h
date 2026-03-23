@@ -1,5 +1,6 @@
 #pragma once
 #include <stdint.h>
+#include <stdbool.h>
 
 #define NYQUIST (SAMPLE_RATE / 2)
 
@@ -29,4 +30,15 @@ static inline float saturate_tube(float _x)
     if (ret < INT16_MIN) return INT16_MIN;
     if (ret > INT16_MAX) return INT16_MAX;
     return ret;
+}
+
+// Return true if one of the samples is beyond int16 range
+static inline bool will_clip(const float *v, size_t count)
+{
+    for (size_t s = 0; s < count; s++) {
+        if (v[s] <= INT16_MIN || v[s] >= INT16_MAX) {
+            return true;
+        }
+    }
+    return false;
 }

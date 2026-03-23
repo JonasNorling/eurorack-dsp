@@ -7,7 +7,9 @@
 
 static const struct gpio_dt_spec leds[] = {
     GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios),
+    GPIO_DT_SPEC_GET(DT_ALIAS(led1), gpios),
     GPIO_DT_SPEC_GET(DT_ALIAS(led2), gpios),
+    GPIO_DT_SPEC_GET(DT_ALIAS(led3), gpios),
 };
 
 int leds_init(void)

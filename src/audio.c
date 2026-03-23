@@ -177,7 +177,6 @@ int audio_run(void(*dsp_fn)(const frame_t * const in, frame_t *const out))
 			break;
 		}
 
-		led_set(1, false);
 		dsp_fn(in_data, out_data);
 
 		ret = i2s_buf_write(i2s_dev_tx, out_data, sizeof(out_data));
@@ -185,7 +184,6 @@ int audio_run(void(*dsp_fn)(const frame_t * const in, frame_t *const out))
 			LOG_ERR("Failed to write data: %d\n", ret);
 			break;
 		}
-		led_set(1, true);
 	}
 
 	return 0;

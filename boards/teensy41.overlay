@@ -3,16 +3,26 @@
 		i2s-codec-tx = &sai1;
 		i2s-codec-rx = &sai1;
 		i2c-codec = &lpi2c1;
+		led1 = &led1;
 		led2 = &led2;
+		led3 = &led3;
 		adc0 = &adc1;
 	};
 
 	leds {
 		compatible = "gpio-leds";
 
+		led1: led1 {
+			gpios = <&gpio1 3 GPIO_ACTIVE_HIGH>; // teensy 0 GPIO_AD_B0_03
+			label = "LED1";
+		};
 		led2: led2 {
-			gpios = <&gpio1 12 GPIO_ACTIVE_LOW>; // teensy 24 AD_B0_12
-			label = "Other LED";
+			gpios = <&gpio1 2 GPIO_ACTIVE_HIGH>; // teensy 1 GPIO_AD_B0_02
+			label = "LED2";
+		};
+		led3: led3 {
+			gpios = <&gpio4 4 GPIO_ACTIVE_HIGH>; // teensy 2 GPIO_EMC_05
+			label = "LED3";
 		};
 	};
 };

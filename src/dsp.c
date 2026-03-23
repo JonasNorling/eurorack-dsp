@@ -41,12 +41,14 @@ static void _dsp_do(const frame_t * const restrict in, frame_t * const restrict 
 			float_samples[1][i] += saturate_tube(input_volume * in[i].s[1]);
 		}
 	}
+	led_set(1, will_clip(float_samples[0], FRAMES_PER_BLOCK) || will_clip(float_samples[1], FRAMES_PER_BLOCK));
 
 	bq_coeffs filter_coeffs;
 	static bq_state filter_state[2];
 	bq_make_lowpass(&filter_coeffs, HZ2OMEGA(cutoff_hz), q_factor);
 	bq_process(float_samples[0], buf[0], FRAMES_PER_BLOCK, &filter_coeffs, &filter_state[0]);
 	bq_process(float_samples[1], buf[1], FRAMES_PER_BLOCK, &filter_coeffs, &filter_state[1]);
+	led_set(3, will_clip(buf[0], FRAMES_PER_BLOCK) || will_clip(buf[1], FRAMES_PER_BLOCK));
 
 	for (int i = 0; i < FRAMES_PER_BLOCK; i++) {
 		out[i].s[0] = float_to_i16(buf[0][i]);
