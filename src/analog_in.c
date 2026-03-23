@@ -23,6 +23,8 @@ struct adc_sequence sequence = {
     .oversampling = 5,
 };
 
+static const int channel_order[CHANNEL_COUNT] = {3, 2, 0, 1};
+
 /* Store floating point values for use by other modules.
  * We expect 32-bit floats to be written/read atomically
  * without any special sauce beyond "volatile". */
@@ -51,7 +53,7 @@ void analog_in_run(void)
 		}
         for (int i = 0; i < CHANNEL_COUNT; i++) {
             // Convert 12-bit to 0..1
-            values[i] = (float)buf[i] / 0x1000;
+            values[channel_order[i]] = (float)buf[i] / 0x1000;
         }
 	}
 }
