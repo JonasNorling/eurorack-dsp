@@ -12,7 +12,7 @@
 //#define CLAMP(v, min, max) (v) > (max) ? (max) : ((v) < (min) ? (min) : (v))
 #define RAMP(v, start, end) ((end) * (v) + (start * (1.0f-(v))))
 
-static inline int16_t saturate(int16_t v)
+static inline int16_t float_to_i16(float v)
 {
     return CLAMP(v, INT16_MIN, INT16_MAX);
 }

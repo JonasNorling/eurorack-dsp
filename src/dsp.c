@@ -48,8 +48,8 @@ static void _dsp_do(const frame_t * const restrict in, frame_t * const restrict 
 	bq_process(float_samples[1], buf[1], FRAMES_PER_BLOCK, &filter_coeffs, &filter_state[1]);
 
 	for (int i = 0; i < FRAMES_PER_BLOCK; i++) {
-		out[i].s[0] = saturate(buf[0][i]);
-		out[i].s[1] = saturate(buf[1][i]);
+		out[i].s[0] = float_to_i16(float_samples[0][i]);
+		out[i].s[1] = float_to_i16(float_samples[1][i]);
 	}
 }
 
