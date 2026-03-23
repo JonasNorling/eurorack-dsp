@@ -8,7 +8,7 @@ LOG_MODULE_REGISTER(audio);
 #define BYTES_PER_SAMPLE sizeof(sample_t)
 #define SAMPLES_PER_BLOCK (FRAMES_PER_BLOCK * 2)
 #define BLOCK_SIZE  (BYTES_PER_SAMPLE * SAMPLES_PER_BLOCK)
-#define BLOCK_COUNT 4
+#define BLOCK_COUNT 8
 K_MEM_SLAB_DEFINE_IN_SECT_STATIC(mem_slab, __nocache, BLOCK_SIZE, BLOCK_COUNT, 4);
 
 static const struct device *const i2s_dev_rx = DEVICE_DT_GET(DT_ALIAS(i2s_codec_rx));
@@ -186,5 +186,5 @@ int audio_run(void(*dsp_fn)(const frame_t * const in, frame_t *const out))
 		}
 	}
 
-    return 0;
+	return 0;
 }
