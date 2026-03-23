@@ -20,9 +20,10 @@ static inline float volume(float a)
 static void _dsp_do(const frame_t * const restrict in, frame_t * const restrict out)
 {
 	static unsigned sample_counter = 0;
-	const double sin_volume = 0.7; //volume(analog_in_get(0));
-	const float input_volume = 0.5; //volume(analog_in_get(1) * 3);
+	const double sin_volume = volume(analog_in_get(0));
+	const float input_volume = volume(analog_in_get(1) * 3);
 	const float cutoff_hz = RAMP(analog_in_get(2), 100, 2000);
+	const float q_factor = RAMP(analog_in_get(3), 1, 10);
 	float_block_t float_samples[2];
 	float_block_t buf[2];
 
@@ -43,13 +44,13 @@ static void _dsp_do(const frame_t * const restrict in, frame_t * const restrict 
 
 	bq_coeffs filter_coeffs;
 	static bq_state filter_state[2];
-	bq_make_lowpass(&filter_coeffs, HZ2OMEGA(cutoff_hz), 1.0);
+	bq_make_lowpass(&filter_coeffs, HZ2OMEGA(cutoff_hz), q_factor);
 	bq_process(float_samples[0], buf[0], FRAMES_PER_BLOCK, &filter_coeffs, &filter_state[0]);
 	bq_process(float_samples[1], buf[1], FRAMES_PER_BLOCK, &filter_coeffs, &filter_state[1]);
 
 	for (int i = 0; i < FRAMES_PER_BLOCK; i++) {
-		out[i].s[0] = float_to_i16(float_samples[0][i]);
-		out[i].s[1] = float_to_i16(float_samples[1][i]);
+		out[i].s[0] = float_to_i16(buf[0][i]);
+		out[i].s[1] = float_to_i16(buf[1][i]);
 	}
 }
 
