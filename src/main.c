@@ -14,9 +14,9 @@ static const int thread_prio_audio = 0;
 static const int thread_prio_analog_in = 1;
 
 static struct k_thread audio_thread;
-static K_THREAD_STACK_DEFINE(audio_stack, 1024);
+static K_THREAD_STACK_DEFINE(audio_stack, 8192);
 static struct k_thread analog_in_thread;
-static K_THREAD_STACK_DEFINE(analog_in_stack, 1024);
+static K_THREAD_STACK_DEFINE(analog_in_stack, 8192);
 
 static void audio_thread_entry(void *dsp_fn, void*, void*) { audio_run(dsp_fn); }
 static void analog_in_thread_entry(void*, void*, void*) { analog_in_run(); }

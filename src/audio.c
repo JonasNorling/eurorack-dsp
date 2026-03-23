@@ -8,7 +8,7 @@ LOG_MODULE_REGISTER(audio);
 #define BYTES_PER_SAMPLE sizeof(sample_t)
 #define SAMPLES_PER_BLOCK (FRAMES_PER_BLOCK * 2)
 #define BLOCK_SIZE  (BYTES_PER_SAMPLE * SAMPLES_PER_BLOCK)
-#define BLOCK_COUNT 8
+#define BLOCK_COUNT 16
 K_MEM_SLAB_DEFINE_IN_SECT_STATIC(mem_slab, __nocache, BLOCK_SIZE, BLOCK_COUNT, 4);
 
 static const struct device *const i2s_dev_rx = DEVICE_DT_GET(DT_ALIAS(i2s_codec_rx));
@@ -79,17 +79,6 @@ static int config_codec(void)
 		}
 	}
 
-	for (int i = 0; i < 0x40; i += 2) {
-		uint8_t value[2] = {};
-		uint8_t reg_addr[2] = {0, i};
-		ret = i2c_write_read(i2c_dev, I2C_ADDR, &reg_addr, 2, &value, 2);
-		if (ret != 0) {
-			LOG_ERR("Codec config failure on line %d", __LINE__);
-			return 1;
-		}
-		LOG_INF("Reg %02x = %02x%02x", i, value[0], value[1]);
-	}
-
 	return 0;
 }
 
@@ -157,6 +146,16 @@ int audio_run(void(*dsp_fn)(const frame_t * const in, frame_t *const out))
 		LOG_ERR("Failed to write data: %d\n", ret);
 		return 1;
 	}
+	ret = i2s_buf_write(i2s_dev_tx, out_data, sizeof(out_data));
+	if (ret < 0) {
+		LOG_ERR("Failed to write data: %d\n", ret);
+		return 1;
+	}
+	ret = i2s_buf_write(i2s_dev_tx, out_data, sizeof(out_data));
+	if (ret < 0) {
+		LOG_ERR("Failed to write data: %d\n", ret);
+		return 1;
+	}
 
 	ret = i2s_trigger(i2s_dev_rx, I2S_DIR_RX, I2S_TRIGGER_START);
 	if (ret < 0) {
@@ -171,12 +170,14 @@ int audio_run(void(*dsp_fn)(const frame_t * const in, frame_t *const out))
 
 	while (1) {
 		size_t len = 0;
+		// This is where we're blocking waiting for data
 		ret = i2s_buf_read(i2s_dev_rx, in_data, &len);
 		if (ret < 0 || len != sizeof(in_data)) {
 			LOG_ERR("Failed to read data: %d\n", ret);
 			break;
 		}
 
+		led_set(1, false);
 		dsp_fn(in_data, out_data);
 
 		ret = i2s_buf_write(i2s_dev_tx, out_data, sizeof(out_data));
@@ -184,6 +185,7 @@ int audio_run(void(*dsp_fn)(const frame_t * const in, frame_t *const out))
 			LOG_ERR("Failed to write data: %d\n", ret);
 			break;
 		}
+		led_set(1, true);
 	}
 
 	return 0;

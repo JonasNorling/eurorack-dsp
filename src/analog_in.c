@@ -45,9 +45,7 @@ int analog_in_init(void)
 void analog_in_run(void)
 {
     while (1) {
-        led_set(1, true);
 		int err = adc_read(adc, &sequence);
-        led_set(1, false);
 		if (err < 0) {
 			printk("Could not read (%d)\n", err);
 		}

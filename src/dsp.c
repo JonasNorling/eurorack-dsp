@@ -8,6 +8,7 @@ LOG_MODULE_REGISTER(dsp);
 #include "biquad.h"
 #include "perftimer.h"
 #include "utils.h"
+#include "leds.h"
 
 typedef float float_block_t[FRAMES_PER_BLOCK];
 
@@ -19,15 +20,15 @@ static inline float volume(float a)
 static void _dsp_do(const frame_t * const restrict in, frame_t * const restrict out)
 {
 	static unsigned sample_counter = 0;
-	const float sin_volume = volume(analog_in_get(0));
-	const float input_volume = volume(analog_in_get(1) * 3);
+	const double sin_volume = 0.7; //volume(analog_in_get(0));
+	const float input_volume = 0.5; //volume(analog_in_get(1) * 3);
 	const float cutoff_hz = RAMP(analog_in_get(2), 100, 2000);
 	float_block_t float_samples[2];
 	float_block_t buf[2];
 
 	for (int i = 0; i < FRAMES_PER_BLOCK; i++) {
-		float_samples[0][i] = sin_volume * 0x7fff * sinf(220 * 6.28 * sample_counter / SAMPLE_RATE);
-		float_samples[1][i] = sin_volume * 0x7fff * sinf(230 * 6.28 * sample_counter / SAMPLE_RATE);
+		float_samples[0][i] = sin_volume * 0x7fff * sin(220 * 6.28 * sample_counter / SAMPLE_RATE);
+		float_samples[1][i] = sin_volume * 0x7fff * sin(230 * 6.28 * sample_counter / SAMPLE_RATE);
 		sample_counter++;
 
 		if (input_volume < 1.0f) {
