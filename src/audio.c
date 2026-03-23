@@ -56,7 +56,7 @@ static int config_codec(void)
 		{ 0x0024, 0x0133 }, // CHIP_ANA_CTRL
 		{ 0x0030, 0x6aff }, // CHIP_ANA_POWER: power it up
 		{ 0x0002, 0x0073 }, // CHIP_DIG_POWER: power it up
-		{ 0x002e, 0x1d1d }, // CHIP_LINE_OUT_VOL 1.3 Vpp
+		{ 0x002e, 0x0f0f }, // CHIP_LINE_OUT_VOL 2.8Vpp
 		{ 0x0004, 0x0008 }, // CHIP_CLK_CTRL: 48 kHz 256*Fs
 		{ 0x0006, 0x0030 }, // CHIP_I2S_CTRL: 16 bit
 		{ 0x0022, 0x1818 }, // CHIP_ANA_HP_CTRL: volume low
