@@ -62,7 +62,7 @@ static int config_codec(void)
 		{ 0x0022, 0x1818 }, // CHIP_ANA_HP_CTRL: volume low
 		{ 0x0024, 0x0026 }, // CHIP_ANA_CTRL: unmute headphones, line, adc
 		{ 0x0010, 0x3c3c }, // CHIP_DAC_VOL: DAC gain 0dB (default)
-		{ 0x000e, 0x0000 }, // CHIP_ADCDAC_CTRL: unmute DACs
+		{ 0x000e, 0x0002 }, // CHIP_ADCDAC_CTRL: unmute DACs, freeze HP filter to remove whining noise
 	};
 
 	for (int i = 0; i < ARRAY_SIZE(incantations); i++) {
