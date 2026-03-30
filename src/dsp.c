@@ -25,8 +25,8 @@ static void _dsp_do(const frame_t * const restrict in, frame_t * const restrict 
 {
 	static double sin_phase = 0.0;
 	const double sin_volume = volume(analog_in_get(0));
-	const float input_volume = volume(analog_in_get(1) * 3);
-	const float cutoff_hz = RAMP(volume(analog_in_get(2)), 10, 2000);
+	const float input_volume = volume(analog_in_get(1) * 3) + volume(analog_in_get(4) * 3);
+	const float cutoff_hz = RAMP(volume(analog_in_get(2)), 10, 2000) + RAMP(volume(analog_in_get(5)), 0, 10000);
 	const float q_factor = RAMP(analog_in_get(3), 1, 10);
 	float_block_t float_samples[2];
 	float_block_t buf[2];
