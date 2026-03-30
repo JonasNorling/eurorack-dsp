@@ -5,32 +5,38 @@
 typedef struct 
 {
     int calls;
-    long long total_ns;
-    long long worst_ns;
-    struct timespec start_ts;
+    uint64_t running_cyc;
+    uint64_t off_cyc;
+    uint64_t worst_cyc;
+    uint64_t start_cyc;
+    uint64_t end_cyc;
 } perftimer_t;
 
 static inline void perftimer_start(perftimer_t *pt)
 {
-    (void)sys_clock_gettime(SYS_CLOCK_MONOTONIC, &pt->start_ts);
+    const uint64_t now = k_cycle_get_64();
+    pt->start_cyc = now;
+    if (pt->end_cyc != 0) {
+        pt->off_cyc += now - pt->end_cyc;
+    }
 }
 
 static inline void perftimer_end(perftimer_t *pt)
 {
-    struct timespec ts;
-    (void)sys_clock_gettime(SYS_CLOCK_MONOTONIC, &ts);
-    const long long unsigned ns =
-        1000000000LL * (ts.tv_sec - pt->start_ts.tv_sec) +
-        (ts.tv_nsec - pt->start_ts.tv_nsec);
-    pt->total_ns += ns;
-    if (ns > pt->worst_ns) {
-        pt->worst_ns = ns;
+    // FIXME: Handle overflow
+    const uint64_t now = k_cycle_get_64();
+    pt->end_cyc = now;
+    const uint64_t cyc = now - pt->start_cyc;
+    pt->running_cyc += cyc;
+    if (cyc > pt->worst_cyc) {
+        pt->worst_cyc = cyc;
     }
     pt->calls++;
 }
 
 static inline void perftimer_report(const char *name, perftimer_t pt)
 {
-    LOG_INF("Timer %s: %d calls, avg %llu ns, worst %llu ns",
-        name, pt.calls, pt.total_ns / pt.calls, pt.worst_ns);
+    int duty_pct = (100 * pt.running_cyc) / pt.off_cyc;
+    LOG_INF("Timer %s: %d calls, avg %llu cycles, worst %llu cycles, duty: %d%%",
+        name, pt.calls, pt.running_cyc / pt.calls, pt.worst_cyc, duty_pct);
 }

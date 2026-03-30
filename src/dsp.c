@@ -13,6 +13,9 @@ LOG_MODULE_REGISTER(dsp);
 typedef float float_block_t[FRAMES_PER_BLOCK];
 #define TAU (2 * 3.14159265358979323846)
 
+static int min_in[2];
+static int max_in[2];
+
 static inline float volume(float a)
 {
 	return a*a;
@@ -29,6 +32,11 @@ static void _dsp_do(const frame_t * const restrict in, frame_t * const restrict 
 	float_block_t buf[2];
 
 	for (int i = 0; i < FRAMES_PER_BLOCK; i++) {
+		min_in[0] = min(min_in[0], in[i].s[0]);
+		max_in[0] = max(max_in[0], in[i].s[0]);
+		min_in[1] = min(min_in[1], in[i].s[1]);
+		max_in[1] = max(max_in[1], in[i].s[1]);
+
 		sin_phase += cutoff_hz * TAU / SAMPLE_RATE;
 		if (sin_phase > TAU) {
 			sin_phase -= TAU;
@@ -70,5 +78,18 @@ void dsp_do(const frame_t * const restrict in, frame_t * const restrict out)
 	if (pt.calls == 1000) {
 		perftimer_report("dsp", pt);
 		pt = (perftimer_t){};
+		LOG_INF("Analog in: %4d %4d %4d %4d %4d %4d",
+			(int)(analog_in_get(0) * 1000),
+			(int)(analog_in_get(1) * 1000),
+			(int)(analog_in_get(2) * 1000),
+			(int)(analog_in_get(3) * 1000),
+			(int)(analog_in_get(4) * 1000),
+			(int)(analog_in_get(5) * 1000)
+		);
+		LOG_INF("Input range: %d-%d, %d-%d", min_in[0], max_in[0], min_in[1], max_in[1]);
+		min_in[0] = 0;
+		min_in[1] = 0;
+		max_in[0] = 0;
+		max_in[1] = 0;
 	}
 }
