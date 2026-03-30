@@ -23,7 +23,7 @@ struct adc_sequence sequence = {
     .oversampling = 5,
 };
 
-static const int channel_order[CHANNEL_COUNT] = {3, 2, 0, 1};
+static const int channel_order[CHANNEL_COUNT] = {3, 2, 4, 5, 0, 1};
 
 /* Store floating point values for use by other modules.
  * We expect 32-bit floats to be written/read atomically

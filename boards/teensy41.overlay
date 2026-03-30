@@ -37,10 +37,14 @@
 			/* ADC1 IN8 on Teensy pin 15 "A1" = AD_B1_03 */
 			/* ADC1 IN12 on Teensy pin 16 "A2" = AD_B1_07 */
 			/* ADC1 IN11 on Teensy pin 17 "A3" = AD_B1_06 */
+			/* ADC1 IN9 on Teensy pin 40 "A16" = AD_B1_04 */
+			/* ADC1 IN10 on Teensy pin 41 "A17" = AD_B1_05 */
 			pinmux = <&iomuxc_gpio_ad_b1_02_adc1_in7>,
 				<&iomuxc_gpio_ad_b1_03_adc1_in8>,
 				<&iomuxc_gpio_ad_b1_07_adc1_in12>,
-				<&iomuxc_gpio_ad_b1_06_adc1_in11>;
+				<&iomuxc_gpio_ad_b1_06_adc1_in11>,
+				<&iomuxc_gpio_ad_b1_04_adc1_in9>,
+				<&iomuxc_gpio_ad_b1_05_adc1_in10>;
 			bias-disable;
 			drive-strength = "r0-6";
 			slew-rate = "slow";
@@ -79,6 +83,22 @@
 
 	channel@8 {
 		reg = <8>;
+		zephyr,gain = "ADC_GAIN_1";
+		zephyr,reference = "ADC_REF_INTERNAL";
+		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+		zephyr,resolution = <12>;
+	};
+
+	channel@9 {
+		reg = <9>;
+		zephyr,gain = "ADC_GAIN_1";
+		zephyr,reference = "ADC_REF_INTERNAL";
+		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+		zephyr,resolution = <12>;
+	};
+
+	channel@10 {
+		reg = <10>;
 		zephyr,gain = "ADC_GAIN_1";
 		zephyr,reference = "ADC_REF_INTERNAL";
 		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
