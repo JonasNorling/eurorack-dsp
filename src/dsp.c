@@ -11,7 +11,6 @@ LOG_MODULE_REGISTER(dsp);
 #include "leds.h"
 
 typedef float float_block_t[FRAMES_PER_BLOCK];
-#define TAU (2 * 3.14159265358979323846)
 
 static int min_in[2];
 static int max_in[2];
@@ -23,12 +22,22 @@ static inline float volume(float a)
 
 static void _dsp_do(const frame_t * const restrict in, frame_t * const restrict out)
 {
-	static double sin_phase = 0.0;
-	const double sin_volume = volume(analog_in_get(0));
-	const float input_volume = volume(analog_in_get(1) * 3) + volume(analog_in_get(4) * 3);
-	const float cutoff_hz = RAMP(volume(analog_in_get(2)), 10, 2000) + RAMP(volume(analog_in_get(5)), 0, 10000);
-	const float q_factor = RAMP(analog_in_get(3), 1, 10);
-	float_block_t float_samples[2];
+	const float pot[] = {
+		analog_in_get(0),
+		analog_in_get(1),
+		analog_in_get(2),
+		analog_in_get(3),
+	};
+	const float cv[] = {
+		CLAMP(analog_in_get(4) * 3, 0.0f, 1.0f),  // Normalize to 1.0 at 5V
+		CLAMP(analog_in_get(5) * 3, 0.0f, 1.0f),  // Normalize to 1.0 at 5V
+	};
+
+	const float envelope = cv[0];
+	const float gain = volume(pot[0] * 2) * volume(envelope);
+	const float cutoff_hz = RAMP(volume(pot[1]), 10, 2000) + RAMP(volume(envelope), 0, NYQUIST);
+	const float q_factor = RAMP(pot[3], 1, 10);
+	float_block_t samples[2];
 	float_block_t buf[2];
 
 	for (int i = 0; i < FRAMES_PER_BLOCK; i++) {
@@ -37,29 +46,16 @@ static void _dsp_do(const frame_t * const restrict in, frame_t * const restrict 
 		min_in[1] = min(min_in[1], in[i].s[1]);
 		max_in[1] = max(max_in[1], in[i].s[1]);
 
-		sin_phase += cutoff_hz * TAU / SAMPLE_RATE;
-		if (sin_phase > TAU) {
-			sin_phase -= TAU;
-		}
-		float_samples[0][i] = sin_volume * 0x7fff * sin(sin_phase);
-		float_samples[1][i] = float_samples[0][i];
-
-		if (input_volume < 1.0f) {
-			float_samples[0][i] += input_volume * in[i].s[0];
-			float_samples[1][i] += input_volume * in[i].s[1];
-		} else {
-			// Overdrive with distortion
-			float_samples[0][i] += saturate_tube(input_volume * in[i].s[0]);
-			float_samples[1][i] += saturate_tube(input_volume * in[i].s[1]);
-		}
+		samples[0][i] = gain * in[i].s[0];
+		samples[1][i] = gain * in[i].s[1];
 	}
-	led_set(1, will_clip(float_samples[0], FRAMES_PER_BLOCK) || will_clip(float_samples[1], FRAMES_PER_BLOCK));
+	led_set(1, will_clip(samples[0], FRAMES_PER_BLOCK) || will_clip(samples[1], FRAMES_PER_BLOCK));
 
 	bq_coeffs filter_coeffs;
 	static bq_state filter_state[2];
 	bq_make_lowpass(&filter_coeffs, HZ2OMEGA(cutoff_hz), q_factor);
-	bq_process(float_samples[0], buf[0], FRAMES_PER_BLOCK, &filter_coeffs, &filter_state[0]);
-	bq_process(float_samples[1], buf[1], FRAMES_PER_BLOCK, &filter_coeffs, &filter_state[1]);
+	bq_process(samples[0], buf[0], FRAMES_PER_BLOCK, &filter_coeffs, &filter_state[0]);
+	bq_process(samples[1], buf[1], FRAMES_PER_BLOCK, &filter_coeffs, &filter_state[1]);
 	led_set(3, will_clip(buf[0], FRAMES_PER_BLOCK) || will_clip(buf[1], FRAMES_PER_BLOCK));
 
 	for (int i = 0; i < FRAMES_PER_BLOCK; i++) {
