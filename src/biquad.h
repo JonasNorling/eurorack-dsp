@@ -20,6 +20,8 @@ typedef struct {
  * State for a biquad stage.
  */
 typedef struct {
+    bq_coeffs coeffs;
+    bq_coeffs prev_coeffs;
     float X[2];
     float Y[2];
 } bq_state;
@@ -48,5 +50,17 @@ void bq_process(
     float* restrict out,
     size_t count,
     const bq_coeffs* c,
+    bq_state* state
+);
+
+/**
+ * Run a biquad filter, fading between new and old coefficients.
+ * This makes the output glitch-free then changing cutoff frequency and
+ * avoids the internal state blowing up in weird ways.
+ */
+void bq_process_smooth(
+    const float* restrict in,
+    float* restrict out,
+    size_t count,
     bq_state* state
 );

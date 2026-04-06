@@ -15,7 +15,6 @@ typedef float float_block_t[FRAMES_PER_BLOCK];
 static int min_in[2];
 static int max_in[2];
 static bq_state filter_state[2];
-static slope_state filter_cutoff_slope;
 static float gate_energy = 0;
 
 static inline float volume(float a)
@@ -39,7 +38,7 @@ static void _dsp_do(const frame_t * const restrict in, frame_t * const restrict 
 	const float envelope = cv[0];
 	const float trigger = cv[1];
 	const float sustain = pot[2];
-	const float q_factor = RAMP(pot[3], 1, 10);
+	const float q_factor = RAMP(pot[3], 0.1f, 10.0f);
 	float_block_t samples[2];
 	float_block_t buf[2];
 
@@ -61,19 +60,11 @@ static void _dsp_do(const frame_t * const restrict in, frame_t * const restrict 
 	}
 	led_set(1, will_clip(samples[0], FRAMES_PER_BLOCK) || will_clip(samples[1], FRAMES_PER_BLOCK));
 
-	// FIXME: The y filter state is fucked up by fast cutoff changes. This makes it better but
-	// I don't think the filter works as intended now.
-	filter_state[0].Y[0] = filter_state[0].X[0];
-	filter_state[0].Y[1] = filter_state[0].X[1];
-	filter_state[1].Y[0] = filter_state[1].X[0];
-	filter_state[1].Y[1] = filter_state[1].X[1];
+	bq_make_lowpass(&filter_state[0].coeffs, HZ2OMEGA(cutoff_hz), q_factor);
+	filter_state[1].coeffs = filter_state[0].coeffs;
 
-	bq_coeffs filter_coeffs;
-	const float filtered_cutoff_hz = slope_limit(&filter_cutoff_slope, NYQUIST / 5, cutoff_hz);
-	bq_make_lowpass(&filter_coeffs, HZ2OMEGA(filtered_cutoff_hz), q_factor);
-
-	bq_process(samples[0], buf[0], FRAMES_PER_BLOCK, &filter_coeffs, &filter_state[0]);
-	bq_process(samples[1], buf[1], FRAMES_PER_BLOCK, &filter_coeffs, &filter_state[1]);
+	bq_process_smooth(samples[0], buf[0], FRAMES_PER_BLOCK, &filter_state[0]);
+	bq_process_smooth(samples[1], buf[1], FRAMES_PER_BLOCK, &filter_state[1]);
 	led_set(3, will_clip(buf[0], FRAMES_PER_BLOCK) || will_clip(buf[1], FRAMES_PER_BLOCK));
 
 	for (int i = 0; i < FRAMES_PER_BLOCK; i++) {
