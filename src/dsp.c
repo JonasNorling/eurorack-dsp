@@ -16,6 +16,7 @@ static int min_in[2];
 static int max_in[2];
 static bq_state filter_state[2];
 static slope_state filter_cutoff_slope;
+static float gate_energy = 0;
 
 static inline float volume(float a)
 {
@@ -36,11 +37,18 @@ static void _dsp_do(const frame_t * const restrict in, frame_t * const restrict 
 	};
 
 	const float envelope = cv[0];
-	const float gain = volume(pot[0] * 2) * volume(envelope);
-	const float cutoff_hz = CLAMP(RAMP(volume(pot[1]), 0, 2000) + RAMP(volume(envelope), 0, NYQUIST), 20, NYQUIST);
+	const float trigger = cv[1];
+	const float sustain = pot[2];
 	const float q_factor = RAMP(pot[3], 1, 10);
 	float_block_t samples[2];
 	float_block_t buf[2];
+
+	gate_energy += trigger * 0.05f;
+	gate_energy *= 0.90f + sustain * 0.11f;
+	gate_energy = CLAMP(gate_energy, envelope, 1.0f);
+
+	const float gain = volume(pot[0] * 2) * volume(gate_energy);
+	const float cutoff_hz = CLAMP(RAMP(volume(pot[1]), 0, 2000) + RAMP(volume(gate_energy), 0, NYQUIST), 20, NYQUIST);
 
 	for (int i = 0; i < FRAMES_PER_BLOCK; i++) {
 		min_in[0] = min(min_in[0], in[i].s[0]);
