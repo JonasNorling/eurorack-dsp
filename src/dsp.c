@@ -15,7 +15,9 @@ typedef float float_block_t[FRAMES_PER_BLOCK];
 static int min_in[2];
 static int max_in[2];
 static bq_state filter_state[2];
-static float gate_energy = 0;
+static quick_filter_state trigger_filter;
+static float vol_envelope = 0.0f;
+static float lp_envelope = 0.0f;
 
 static inline float volume(float a)
 {
@@ -31,23 +33,29 @@ static void _dsp_do(const frame_t * const restrict in, frame_t * const restrict 
 		analog_in_get(3),
 	};
 	const float cv[] = {
-		CLAMP(analog_in_get(4) * 3, 0.0f, 1.0f),  // Normalize to 1.0 at 5V
-		CLAMP(analog_in_get(5) * 3, 0.0f, 1.0f),  // Normalize to 1.0 at 5V
+		CLAMP(analog_in_get(4) * 2.41f, 0.0f, 1.0f),  // Normalize to 1.0 at 5V (0.415 ADC)
+		CLAMP(analog_in_get(5) * 2.41f, 0.0f, 1.0f),  // Normalize to 1.0 at 5V (0.415 ADC)
 	};
 
-	const float envelope = cv[0];
-	const float trigger = cv[1];
-	const float sustain = pot[2];
+	const float vol_sustime = sqrt(sqrt(pot[2]));
+	const float lp_sustime = sqrt(sqrt(CLAMP(pot[2] + RAMP(pot[1], -0.2f, 0.2f), 0.0f, 1.0f)));
 	const float q_factor = RAMP(pot[3], 0.1f, 10.0f);
 	float_block_t samples[2];
 	float_block_t buf[2];
 
-	gate_energy += trigger * 0.05f;
-	gate_energy *= 0.90f + sustain * 0.11f;
-	gate_energy = CLAMP(gate_energy, envelope, 1.0f);
+	// Around 10ms of the rising trigger
+	const float trigger_pulse = CLAMP(q_highpass(&trigger_filter, 0.1, cv[0]), 0.0f, 1.0f);
 
-	const float gain = volume(pot[0] * 2) * volume(gate_energy);
-	const float cutoff_hz = CLAMP(RAMP(volume(pot[1]), 0, 2000) + RAMP(volume(gate_energy), 0, NYQUIST), 20, NYQUIST);
+	vol_envelope += 0.8f * trigger_pulse;
+	vol_envelope *= RAMP(vol_sustime, 0.8f, 0.99999f);
+	vol_envelope = CLAMP(vol_envelope, 0.0f, 1.0f);
+
+	lp_envelope += 0.6f * trigger_pulse;
+	lp_envelope *= RAMP(lp_sustime, 0.8f, 0.99999f);
+	lp_envelope = CLAMP(lp_envelope, 0.0f, 1.0f);
+
+	const float gain = volume(pot[0] * 2) * vol_envelope;
+	const float cutoff_hz = RAMP(lp_envelope, 20, NYQUIST * 0.95);
 
 	for (int i = 0; i < FRAMES_PER_BLOCK; i++) {
 		min_in[0] = min(min_in[0], in[i].s[0]);

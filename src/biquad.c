@@ -22,7 +22,6 @@ void bq_make_lowpass(bq_coeffs* c, float w0, float q)
     const float a0 = 1.0f + alpha;
     const float a0inv = 1.0f / a0;
     const float cosw0 = cosf(w0);
-    c->gain = a0;
     c->a1 = -2.0f * cosw0 * a0inv;
     c->a2 = (1.0f - alpha) * a0inv;
     c->b1 = (1.0f - cosw0) * a0inv;
@@ -45,7 +44,6 @@ void bq_make_bandpass(bq_coeffs* c, float w0, float q)
     const float a0 = 1.0f + alpha;
     const float a0inv = 1.0f / a0;
     const float cosw0 = cosf(w0);
-    c->gain = a0;
     c->a1 = -2.0f * cosw0 * a0inv;
     c->a2 = (1.0f - alpha) * a0inv;
     c->b0 = q * alpha * a0inv;
@@ -55,7 +53,7 @@ void bq_make_bandpass(bq_coeffs* c, float w0, float q)
 
 static inline float bq_core(const bq_coeffs* c, const float in, float X[2], float Y[2])
 {
-    const float y = c->gain * c->b0*in +
+    const float y = c->b0*in +
         c->b1*X[0] + c->b2*X[1] -
         c->a1*Y[0] - c->a2*Y[1];
     X[1] = X[0];
@@ -85,17 +83,7 @@ void bq_process_smooth(
     bq_state* state
 )
 {
-    // Fade smoothly between previuous and new coefficients.
-    // Start with a clean state for the new coefficients.
-    // At the end, store state that fits the new coefficients.
-    bq_state prev_state = *state;
-    bq_state new_state = {.prev_coeffs = state->coeffs, .coeffs = state->coeffs};
     for (size_t s = 0; s < count; s++) {
-        const float fade = (float)s / count;
-        const float prev = bq_core(&state->prev_coeffs, in[s], prev_state.X, prev_state.Y);
-        const float new = bq_core(&state->coeffs, in[s], new_state.X, new_state.Y);
-        out[s] = prev * (1.0f-fade) + new * fade;
+        out[s] = bq_core(&state->coeffs, in[s], state->X, state->Y);
     }
-
-    *state = new_state;
 }

@@ -61,3 +61,19 @@ static inline float slope_limit(slope_state *state, float slope_limit, float val
     }
     return state->last_value;
 }
+
+typedef struct {
+    float v;
+} quick_filter_state;
+
+static inline float q_lowpass(quick_filter_state *state, float factor, float value)
+{
+    state->v = factor * value + (1.0f - factor) * state->v;
+    return state->v;
+}
+
+static inline float q_highpass(quick_filter_state *state, float factor, float value)
+{
+    state->v = factor * value + (1.0f - factor) * state->v;
+    return value - state->v;
+}

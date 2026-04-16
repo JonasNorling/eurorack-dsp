@@ -11,7 +11,6 @@
  *  Where a0 has been normalized to 1.
  */
 typedef struct {
-    float gain;
     float a1, a2; // poles
     float b0, b1, b2; // zeros
 } bq_coeffs;
