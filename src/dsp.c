@@ -18,6 +18,7 @@ static bq_state filter_state[2];
 static quick_filter_state trigger_filter;
 static float vol_envelope = 0.0f;
 static float lp_envelope = 0.0f;
+static float long_term_energy = 0.0f;
 
 static inline float volume(float a)
 {
@@ -44,18 +45,22 @@ static void _dsp_do(const frame_t * const restrict in, frame_t * const restrict 
 	float_block_t buf[2];
 
 	// Around 10ms of the rising trigger
-	const float trigger_pulse = CLAMP(q_highpass(&trigger_filter, 0.1, cv[0]), 0.0f, 1.0f);
+	const float trigger_pulse = CLAMP(RAMP(pot[0], 0.2f, 2.0f) * q_highpass(&trigger_filter, RAMP(pot[0], 0.05f, 0.2f), cv[0]), 0.0f, 1.0f);
 
-	vol_envelope += 0.8f * trigger_pulse;
+	// Lasts a couple of seconds
+	long_term_energy += 0.1f * trigger_pulse;
+	long_term_energy *= 0.998f;
+	long_term_energy = CLAMP(long_term_energy, 0.0f, 1.2f);
+
+	vol_envelope += 0.8f * trigger_pulse * CLAMP(long_term_energy, 0.5f, 1.0f);
 	vol_envelope *= RAMP(vol_sustime, 0.8f, 0.99999f);
 	vol_envelope = CLAMP(vol_envelope, 0.0f, 1.0f);
 
-	lp_envelope += 0.6f * trigger_pulse;
+	lp_envelope += 0.6f * trigger_pulse * CLAMP(long_term_energy, 0.5f, 1.0f);
 	lp_envelope *= RAMP(lp_sustime, 0.8f, 0.99999f);
 	lp_envelope = CLAMP(lp_envelope, 0.0f, 1.0f);
 
-	const float gain = volume(pot[0] * 2) * vol_envelope;
-	const float cutoff_hz = RAMP(lp_envelope, 20, NYQUIST * 0.95);
+	const float cutoff_hz = RAMP(lp_envelope, 20.0f, NYQUIST * 0.95f);
 
 	for (int i = 0; i < FRAMES_PER_BLOCK; i++) {
 		min_in[0] = min(min_in[0], in[i].s[0]);
@@ -63,8 +68,8 @@ static void _dsp_do(const frame_t * const restrict in, frame_t * const restrict 
 		min_in[1] = min(min_in[1], in[i].s[1]);
 		max_in[1] = max(max_in[1], in[i].s[1]);
 
-		samples[0][i] = gain * in[i].s[0];
-		samples[1][i] = gain * in[i].s[1];
+		samples[0][i] = vol_envelope * in[i].s[0];
+		samples[1][i] = vol_envelope * in[i].s[1];
 	}
 	led_set(1, will_clip(samples[0], FRAMES_PER_BLOCK) || will_clip(samples[1], FRAMES_PER_BLOCK));
 
